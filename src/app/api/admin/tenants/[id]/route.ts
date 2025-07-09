@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import type { RouteHandlerContext } from 'next/dist/server/future/route-modules/app-route/module';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Função auxiliar para gerar um slug a partir de um nome
 function generateSlug(name: string): string {
   return name
     .toLowerCase()
@@ -18,7 +18,7 @@ function generateSlug(name: string): string {
 // GET: Buscar um tenant específico por ID
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: RouteHandlerContext
 ) {
   try {
     const { id } = context.params;
@@ -43,7 +43,7 @@ export async function GET(
         isPaused: true,
         createdAt: true,
         updatedAt: true,
-      }
+      },
     });
 
     if (!tenant) {
@@ -63,10 +63,11 @@ export async function GET(
 // PUT: Atualizar um tenant específico por ID
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: RouteHandlerContext
 ) {
   try {
     const { id } = context.params;
+
     const {
       name,
       cnpj,
@@ -136,7 +137,7 @@ export async function PUT(
         isPaused: true,
         createdAt: true,
         updatedAt: true,
-      }
+      },
     });
 
     return NextResponse.json(updatedTenant, { status: 200 });
@@ -152,7 +153,7 @@ export async function PUT(
 // DELETE: Excluir um tenant específico por ID
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: RouteHandlerContext
 ) {
   try {
     const { id } = context.params;
