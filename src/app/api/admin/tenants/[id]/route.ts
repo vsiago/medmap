@@ -174,7 +174,7 @@ export async function PUT(
 // Rota DELETE para excluir um Tenant específico por ID
 export async function DELETE(
   request: NextRequest, // Use NextRequest para o primeiro argumento
-  { params }: { params: { id: string } } // Tipagem correta para o segundo argumento
+  { params }: { params: Record<string, string> }// Tipagem correta para o segundo argumento
 ) {
   try {
     // ATENÇÃO: Autenticação e Autorização
