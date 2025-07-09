@@ -7,16 +7,30 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// O modelo Tenant agora representa o "TenantOperator"
 model Tenant {
-  id          String       @id @default(uuid())
-  name        String
-  logoUrl     String?
-  color       String?
-  users       User[]
-  operators   Operator[]
-  comparisons Comparison[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id                  String  @id @default(uuid())
+  name                String // Nome do Tenant/Operadora
+  slug                String  @unique // Slug para a URL dinâmica (ex: oplan)
+  logoUrl             String? // Logo do Tenant/Operadora
+  color               String? // Cor principal do Tenant/Operadora
+  cnpj                String  @unique // CNPJ do Tenant/Operadora (agora único no Tenant)
+  address             String? // Endereço completo do Tenant/Operadora
+  addressComplement   String? // Complemento do endereço
+  neighborhood        String? // Bairro
+  city                String? // Cidade
+  state               String? // Estado
+  zipCode             String? // CEP
+  phone               String? // Telefone
+  isPremiumSubscriber Boolean @default(false) // NOVO CAMPO: Assinante Premium
+  isPaused            Boolean @default(false) // NOVO CAMPO: Tenant Pausado
+
+  users       User[] // Usuários vinculados a este Tenant
+  networks    Network[] // Redes credenciadas vinculadas a este Tenant/Operadora
+  comparisons Comparison[] // Comparações vinculadas a este Tenant
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model User {
@@ -25,34 +39,11 @@ model User {
   name      String
   password  String
   role      UserRole @default(ANALYST)
-  tenantId  String? // MUDANÇA AQUI: Tornar tenantId opcional
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id]) // MUDANÇA AQUI: Relação também opcional
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([tenantId])
-}
-
-model Operator {
-  id                String    @id @default(uuid())
-  name              String
-  logo              String // NOVO CAMPO: Logo da operadora
-  color             String // NOVO CAMPO: Cor da operadora
-  cnpj              String    @unique // CNPJ deve ser único
-  tenantId          String
-  tenant            Tenant    @relation(fields: [tenantId], references: [id])
-  address           String? // NOVO CAMPO: Endereço completo
-  addressComplement String? // NOVO CAMPO: Complemento do endereço
-  neighborhood      String? // NOVO CAMPO: Bairro
-  city              String? // NOVO CAMPO: Cidade
-  state             String? // NOVO CAMPO: Estado
-  zipCode           String? // NOVO CAMPO: CEP
-  phone             String? // NOVO CAMPO: Telefone
-  networks          Network[]
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  @@unique([tenantId, cnpj])
   @@index([tenantId])
 }
 
@@ -66,8 +57,8 @@ enum UserRole {
 
 model Network {
   id               String       @id @default(uuid())
-  operatorId       String
-  operator         Operator     @relation(fields: [operatorId], references: [id])
+  tenantId         String // Agora Network se relaciona diretamente com Tenant
+  tenant           Tenant       @relation(fields: [tenantId], references: [id])
   name             String
   description      String?
   version          String?
@@ -77,7 +68,7 @@ model Network {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  @@index([operatorId])
+  @@index([tenantId])
 }
 
 model Unit {

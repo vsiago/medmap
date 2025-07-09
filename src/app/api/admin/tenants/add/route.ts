@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs'; // Para hashear a senha do admin
 
 const prisma = new PrismaClient();
 
-// Rota POST para criar uma nova Operadora de Saúde e um usuário Admin para o Tenant
+// Rota POST para criar uma nova Operadora de Saúde, seu Tenant e um usuário Admin
 export async function POST(req: Request) {
   try {
     // ATENÇÃO: Autenticação e Autorização
@@ -16,27 +16,26 @@ export async function POST(req: Request) {
     // }
 
     const {
-      name,
+      name, // Nome da Operadora (será usado para o Tenant também)
       cnpj,
-      logo,      // Novo campo
-      color,     // Novo campo
-      tenantId,
-      address,   // Novo campo
-      addressComplement, // Novo campo
-      neighborhood,    // Novo campo
-      city,            // Novo campo
-      state,           // Novo campo
-      zipCode,         // Novo campo
-      phone,           // Novo campo
-      adminName,       // Dados do admin do Tenant
-      adminEmail,      // Dados do admin do Tenant
-      adminPassword    // Dados do admin do Tenant
+      logo,
+      color,
+      address,
+      addressComplement,
+      neighborhood,
+      city,
+      state,
+      zipCode,
+      phone,
+      adminName,
+      adminEmail,
+      adminPassword
     } = await req.json();
 
     // 1. Validação de entrada
-    if (!name || !cnpj || !logo || !color || !tenantId || !adminName || !adminEmail || !adminPassword) {
+    if (!name || !cnpj || !logo || !color || !adminName || !adminEmail || !adminPassword) {
       return NextResponse.json(
-        { message: 'Todos os campos obrigatórios (Operadora e Admin) devem ser preenchidos.' },
+        { message: 'Nome, CNPJ, Logo, Cor da Operadora e dados do Administrador (Nome, Email, Senha) são obrigatórios.' },
         { status: 400 }
       );
     }
@@ -50,16 +49,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Já existe uma operadora com este CNPJ.' }, { status: 409 });
     }
 
-    // 3. Verificar se o Tenant existe
-    const existingTenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-    });
-
-    if (!existingTenant) {
-      return NextResponse.json({ message: 'Tenant inválido ou não encontrado.' }, { status: 400 });
-    }
-
-    // 4. Verificar se o email do admin já está em uso
+    // 3. Verificar se o email do admin já está em uso
     const existingAdminUser = await prisma.user.findUnique({
       where: { email: adminEmail },
     });
@@ -68,19 +58,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Email do administrador já está em uso.' }, { status: 409 });
     }
 
-    // 5. Hashear a senha do admin
+    // 4. Hashear a senha do admin
     const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
 
-    // 6. Criar a nova Operadora e o usuário Administrador do Tenant em uma transação
-    // Isso garante que ambos sejam criados com sucesso ou nenhum seja.
-    const [newOperator, newAdminUser] = await prisma.$transaction([
-      prisma.operator.create({
+    // 5. Criar o novo Tenant, a Operadora e o usuário Administrador em uma transação
+    const result = await prisma.$transaction(async (tx) => {
+      // Criar o Tenant primeiro
+      const newTenant = await tx.tenant.create({
+        data: {
+          name: name, // Usar o nome da operadora como nome do tenant
+          // Opcional: Você pode adicionar logoUrl e color aqui se o Tenant também tiver esses campos
+          // logoUrl: logo,
+          // color: color,
+        },
+      });
+
+      // Criar a Operadora, associando-a ao novo Tenant
+      const newOperator = await tx.operator.create({
         data: {
           name,
           cnpj,
           logo,
           color,
-          tenantId,
+          tenantId: newTenant.id, // Usa o ID do Tenant recém-criado
           address,
           addressComplement,
           neighborhood,
@@ -100,17 +100,19 @@ export async function POST(req: Request) {
           state: true,
           zipCode: true,
           phone: true,
-          tenant: { select: { name: true } },
+          tenant: { select: { id: true, name: true } }, // Seleciona o ID e nome do tenant
           createdAt: true,
         }
-      }),
-      prisma.user.create({
+      });
+
+      // Criar o usuário Administrador, associando-o ao novo Tenant
+      const newAdminUser = await tx.user.create({
         data: {
           name: adminName,
           email: adminEmail,
           password: hashedAdminPassword,
           role: 'ADMIN', // Define a role como ADMIN para o usuário do Tenant
-          tenantId: tenantId, // Associa ao Tenant selecionado
+          tenantId: newTenant.id, // Associa ao Tenant recém-criado
         },
         select: {
           id: true,
@@ -119,18 +121,23 @@ export async function POST(req: Request) {
           role: true,
           tenantId: true,
         }
-      })
-    ]);
+      });
+
+      return { newOperator, newAdminUser, newTenant };
+    });
 
     return NextResponse.json({
-      operator: newOperator,
-      adminUser: newAdminUser,
-      message: `Operadora "${newOperator.name}" e administrador do Tenant criados com sucesso!`
+      operator: result.newOperator,
+      adminUser: result.newAdminUser,
+      tenant: result.newTenant,
+      message: `Operadora "${result.newOperator.name}", Tenant "${result.newTenant.name}" e administrador criados com sucesso!`
     }, { status: 201 });
 
   } catch (error) {
     console.error('Erro na rota POST /api/admin/operators/add:', error);
-    return NextResponse.json({ message: 'Erro interno do servidor ao criar operadora e administrador.' }, { status: 500 });
+    // Em caso de erro na transação, o Prisma reverte as operações.
+    // Aqui, capturamos o erro e retornamos uma mensagem genérica ou mais específica se o erro for do Prisma.
+    return NextResponse.json({ message: 'Erro interno do servidor ao criar operadora, tenant e administrador.' }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }

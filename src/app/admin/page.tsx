@@ -12,20 +12,36 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator"; // Útil para separar seções
+import { PlusCircle, Building as BuildingIcon, Users as UsersIcon, ExternalLink, CheckCircle2, PauseCircle } from 'lucide-react'; // Importe ícones Lucide
 
-// Interface para a Operadora (apenas o necessário para contagem)
-interface Operator {
+// Interface para o Tenant (agora inclui todos os campos da antiga Operadora)
+interface Tenant {
   id: string;
-  // Outros campos não necessários para este dashboard
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  color: string | null;
+  cnpj: string;
+  address: string | null;
+  addressComplement: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  zipCode: string | null;
+  phone: string | null;
+  isPremiumSubscriber: boolean;
+  isPaused: boolean;
+  createdAt: string;
 }
 
 export default function AdminDashboardPage() {
-  const [totalOperators, setTotalOperators] = useState<number | null>(null);
-  const [totalUsers, setTotalUsers] = useState<number | null>(null); // Novo estado para total de usuários
+  const [tenants, setTenants] = useState<Tenant[]>([]); // Alterado para tenants
+  const [totalUsers, setTotalUsers] = useState<number | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [dataError, setDataError] = useState('');
 
@@ -39,7 +55,7 @@ export default function AdminDashboardPage() {
     }
   }, [user, isAuthLoading, router]);
 
-  // Efeito para carregar o total de operadoras e usuários
+  // Efeito para carregar o total de tenants e usuários
   useEffect(() => {
     const fetchDashboardData = async () => {
       // Só busca se o usuário for ROOT e o AuthContext já carregou
@@ -47,15 +63,17 @@ export default function AdminDashboardPage() {
         setIsLoadingData(true);
         setDataError('');
         try {
-          // --- Busca Total de Operadoras ---
-          const operatorsResponse = await axios.get('/api/admin/operators', {
+          // --- Busca Total de Tenants (antigas Operadoras) ---
+          // CORRIGIDO: Chamando a API correta para listar tenants
+          const tenantsResponse = await axios.get('/api/admin/tenants', {
             headers: {
-              // Inclua o token de autorização se sua API de operators exigir
+              // Inclua o token de autorização se sua API de tenants exigir
               // 'Authorization': `Bearer ${user.token}` // Exemplo: se o token estiver no user do contexto
             }
           });
-          const operatorsList: Operator[] = operatorsResponse.data;
-          setTotalOperators(operatorsList.length);
+          const tenantsList: Tenant[] = tenantsResponse.data;
+          setTenants(tenantsList); // Armazena a lista completa de tenants
+          // setTotalOperators(tenantsList.length); // Não precisamos mais de totalOperators separado
 
           // --- Busca Total de Usuários ---
           // Consumindo o endpoint /api/admin/users/count
@@ -123,30 +141,16 @@ export default function AdminDashboardPage() {
   // Se o usuário é ROOT, mostra o conteúdo da página
   return (
     <main className="min-h-screen bg-accent p-8">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <h1 className="text-4xl font-bold text-center text-primary mb-8">Painel de Super-Administrador</h1>
+      <div className="max-w-6xl mx-auto space-y-8">
+        <h1 className="text-4xl font-bold text-center text-primary-foreground mb-8">Painel de Super-Administrador</h1>
 
         {/* Destaques/Métricas Principais */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Card: Total de Operadoras */}
+          {/* Card: Total de Tenants (antigas Operadoras) */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Operadoras</CardTitle>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                className="h-4 w-4 text-muted-foreground"
-              >
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87m-3-1.13a4 4 0 0 1 4-4v-2" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
+              <CardTitle className="text-sm font-medium">Total de Tenants</CardTitle>
+              <BuildingIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               {isLoadingData ? (
@@ -156,10 +160,10 @@ export default function AdminDashboardPage() {
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    {totalOperators !== null ? totalOperators : 'N/A'}
+                    {tenants.length} {/* Agora usa o length da lista de tenants */}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Operadoras de saúde cadastradas no sistema.
+                    Tenants (Operadoras) cadastradas no sistema.
                   </p>
                 </>
               )}
@@ -170,20 +174,7 @@ export default function AdminDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                className="h-4 w-4 text-muted-foreground"
-              >
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87m-3-1.13a4 4 0 0 1 4-4v-2" />
-              </svg>
+              <UsersIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               {isLoadingData ? (
@@ -203,7 +194,22 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Você pode adicionar mais Cards para outras métricas aqui, como Total de Tenants, etc. */}
+          {/* Card: Atalho para Adicionar Novo Tenant */}
+          <Card className="flex flex-col justify-center items-center p-6 text-center">
+            <CardContent className="p-0 flex flex-col items-center justify-center h-full">
+              <PlusCircle className="h-8 w-8 text-primary mb-2" />
+              <CardTitle className="text-lg">Adicionar Novo Tenant</CardTitle>
+              <CardDescription className="text-sm text-muted-foreground mt-1">
+                Cadastre um novo Tenant (Operadora) de saúde.
+              </CardDescription>
+            </CardContent>
+            <CardFooter className="p-0 pt-4 w-full">
+              {/* CORRIGIDO: Removido asChild do Button */}
+              <Button className="w-full">
+                <Link href="/admin/tenants/add">Adicionar</Link> {/* Link corrigido */}
+              </Button>
+            </CardFooter>
+          </Card>
         </div>
 
         <Separator className="my-8" />
@@ -215,20 +221,20 @@ export default function AdminDashboardPage() {
             <CardDescription>Acesse as principais funcionalidades de administração.</CardDescription>
           </CardHeader>
           <CardContent className="p-0 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button asChild className="h-auto py-4">
-              <Link href="/admin/operators" className='flex flex-col'>
-                <span className="text-lg font-semibold text-white">Gerenciar Operadoras</span>
-                <span className="text-sm text-muted-foreground block">Crie e visualize operadoras de saúde.</span>
-              </Link>
-            </Button>
-            <Button asChild className="h-auto py-4">
+            <Button className="h-auto py-4">
               <Link href="/admin/tenants" className='flex flex-col'>
                 <span className="text-lg font-semibold text-white">Gerenciar Tenants</span>
-                <span className="text-sm text-muted-foreground block">Crie e configure os clientes da plataforma.</span>
+                <span className="text-sm text-muted-foreground block">Crie e visualize clientes da plataforma.</span>
               </Link>
             </Button>
-            <Button asChild className="h-auto py-4">
-              <Link href="/admin/register-root" className='flex flex-col'>
+            <Button className="h-auto py-4">
+              <Link href="/admin/users" className='flex flex-col'>
+                <span className="text-lg font-semibold text-white">Gerenciar Usuários</span>
+                <span className="text-sm text-muted-foreground block">Visualize e edite todos os usuários.</span>
+              </Link>
+            </Button>
+            <Button className="h-auto py-4">
+              <Link href="/register-root" className='flex flex-col'>
                 <span className="text-lg font-semibold text-white">Cadastrar Usuário ROOT</span>
                 <span className="text-sm text-muted-foreground block">Crie novas contas de super-administrador.</span>
               </Link>

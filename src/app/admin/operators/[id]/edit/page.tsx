@@ -35,7 +35,16 @@ interface Operator {
   id: string;
   name: string;
   cnpj: string;
+  logo: string; // Novo campo
+  color: string; // Novo campo
   tenantId: string;
+  address: string | null; // Novo campo
+  addressComplement: string | null; // Novo campo
+  neighborhood: string | null; // Novo campo
+  city: string | null; // Novo campo
+  state: string | null; // Novo campo
+  zipCode: string | null; // Novo campo
+  phone: string | null; // Novo campo
   createdAt: string;
 }
 
@@ -43,8 +52,19 @@ export default function EditOperatorPage() {
   const { id } = useParams(); // Obtém o ID da operadora da URL
   const operatorId = typeof id === 'string' ? id : id?.[0]; // Garante que 'id' é string
 
+  // Estados da Operadora
   const [operatorName, setOperatorName] = useState('');
   const [operatorCnpj, setOperatorCnpj] = useState('');
+  const [operatorLogo, setOperatorLogo] = useState('');
+  const [operatorColor, setOperatorColor] = useState('');
+  const [operatorAddress, setOperatorAddress] = useState('');
+  const [operatorAddressComplement, setOperatorAddressComplement] = useState('');
+  const [operatorNeighborhood, setOperatorNeighborhood] = useState('');
+  const [operatorCity, setOperatorCity] = useState('');
+  const [operatorState, setOperatorState] = useState('');
+  const [operatorZipCode, setOperatorZipCode] = useState('');
+  const [operatorPhone, setOperatorPhone] = useState('');
+
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [formError, setFormError] = useState('');
@@ -81,7 +101,16 @@ export default function EditOperatorPage() {
           const operatorData: Operator = operatorRes.data;
           setOperatorName(operatorData.name);
           setOperatorCnpj(operatorData.cnpj);
+          setOperatorLogo(operatorData.logo);
+          setOperatorColor(operatorData.color);
           setSelectedTenantId(operatorData.tenantId);
+          setOperatorAddress(operatorData.address || '');
+          setOperatorAddressComplement(operatorData.addressComplement || '');
+          setOperatorNeighborhood(operatorData.neighborhood || '');
+          setOperatorCity(operatorData.city || '');
+          setOperatorState(operatorData.state || '');
+          setOperatorZipCode(operatorData.zipCode || '');
+          setOperatorPhone(operatorData.phone || '');
 
         } catch (err: any) {
           console.error('Erro ao buscar dados:', err);
@@ -105,17 +134,26 @@ export default function EditOperatorPage() {
     setFormSuccess('');
     setIsSubmitting(true);
 
-    if (!operatorName || !operatorCnpj || !selectedTenantId) {
-      setFormError('Por favor, preencha todos os campos e selecione um Tenant.');
+    if (!operatorName || !operatorCnpj || !operatorLogo || !operatorColor || !selectedTenantId) {
+      setFormError('Por favor, preencha todos os campos obrigatórios.');
       setIsSubmitting(false);
       return;
     }
 
     try {
-      const response = await axios.put(`/api/admin/operators/${operatorId}`, { // Endpoint PUT
+      const response = await axios.put(`/api/admin/operators/${operatorId}`, {
         name: operatorName,
         cnpj: operatorCnpj,
+        logo: operatorLogo,
+        color: operatorColor,
         tenantId: selectedTenantId,
+        address: operatorAddress,
+        addressComplement: operatorAddressComplement,
+        neighborhood: operatorNeighborhood,
+        city: operatorCity,
+        state: operatorState,
+        zipCode: operatorZipCode,
+        phone: operatorPhone,
       }, {
         headers: {
           'Content-Type': 'application/json',
@@ -179,14 +217,14 @@ export default function EditOperatorPage() {
 
   return (
     <main className="min-h-screen bg-accent p-8">
-      <div className="max-w-2xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex items-center gap-4 mb-8">
           <Button variant="ghost" size="icon" asChild>
             <Link href="/admin/operators">
               <ChevronLeft className="h-6 w-6" />
             </Link>
           </Button>
-          <h1 className="text-3xl font-bold text-primary-foreground">Editar Operadora</h1>
+          <h1 className="text-3xl font-bold text-primary">Editar Operadora</h1>
         </div>
 
         <Card className="p-6">
@@ -195,7 +233,7 @@ export default function EditOperatorPage() {
             <CardDescription>Atualize as informações da operadora de saúde.</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <form onSubmit={handleUpdateOperator} className="flex flex-col gap-4">
+            <form onSubmit={handleUpdateOperator} className="flex flex-col gap-6">
               {formError && (
                 <p className="text-destructive text-sm text-center bg-destructive/10 p-2 rounded-md">
                   {formError}
@@ -206,31 +244,143 @@ export default function EditOperatorPage() {
                   {formSuccess}
                 </p>
               )}
-              <div className="grid gap-2">
-                <Label htmlFor="operatorName">Nome da Operadora</Label>
-                <Input
-                  id="operatorName"
-                  type="text"
-                  placeholder="Ex: Unimed, Bradesco Saúde"
-                  required
-                  value={operatorName}
-                  onChange={(e) => setOperatorName(e.target.value)}
-                  disabled={isSubmitting}
-                />
+              {/* Seção de Dados da Operadora */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="operatorName">Nome da Operadora</Label>
+                  <Input
+                    id="operatorName"
+                    type="text"
+                    placeholder="Ex: Unimed, Bradesco Saúde"
+                    required
+                    value={operatorName}
+                    onChange={(e) => setOperatorName(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="operatorCnpj">CNPJ</Label>
+                  <Input
+                    id="operatorCnpj"
+                    type="text"
+                    placeholder="Ex: 00.000.000/0001-00"
+                    required
+                    value={operatorCnpj}
+                    onChange={(e) => setOperatorCnpj(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="operatorLogo">URL do Logo</Label>
+                  <Input
+                    id="operatorLogo"
+                    type="url"
+                    placeholder="Ex: https://exemplo.com/logo.png"
+                    required
+                    value={operatorLogo}
+                    onChange={(e) => setOperatorLogo(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="operatorColor">Cor Principal (Hex)</Label>
+                  <Input
+                    id="operatorColor"
+                    type="text"
+                    placeholder="Ex: #007bff"
+                    required
+                    value={operatorColor}
+                    onChange={(e) => setOperatorColor(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="operatorCnpj">CNPJ</Label>
-                <Input
-                  id="operatorCnpj"
-                  type="text"
-                  placeholder="Ex: 00.000.000/0001-00"
-                  required
-                  value={operatorCnpj}
-                  onChange={(e) => setOperatorCnpj(e.target.value)}
-                  disabled={isSubmitting}
-                />
+
+              {/* Seção de Endereço da Operadora */}
+              <h3 className="text-lg font-semibold mt-4">Endereço da Operadora</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="operatorAddress">Endereço</Label>
+                  <Input
+                    id="operatorAddress"
+                    type="text"
+                    placeholder="Ex: Rua Exemplo, 123"
+                    value={operatorAddress}
+                    onChange={(e) => setOperatorAddress(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="operatorAddressComplement">Complemento</Label>
+                  <Input
+                    id="operatorAddressComplement"
+                    type="text"
+                    placeholder="Ex: Apto 101"
+                    value={operatorAddressComplement}
+                    onChange={(e) => setOperatorAddressComplement(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="operatorNeighborhood">Bairro</Label>
+                  <Input
+                    id="operatorNeighborhood"
+                    type="text"
+                    placeholder="Ex: Centro"
+                    value={operatorNeighborhood}
+                    onChange={(e) => setOperatorNeighborhood(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="operatorCity">Cidade</Label>
+                  <Input
+                    id="operatorCity"
+                    type="text"
+                    placeholder="Ex: São Paulo"
+                    value={operatorCity}
+                    onChange={(e) => setOperatorCity(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="operatorState">Estado (UF)</Label>
+                  <Input
+                    id="operatorState"
+                    type="text"
+                    placeholder="Ex: SP"
+                    maxLength={2}
+                    value={operatorState}
+                    onChange={(e) => setOperatorState(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="operatorZipCode">CEP</Label>
+                  <Input
+                    id="operatorZipCode"
+                    type="text"
+                    placeholder="Ex: 00000-000"
+                    value={operatorZipCode}
+                    onChange={(e) => setOperatorZipCode(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="operatorPhone">Telefone</Label>
+                  <Input
+                    id="operatorPhone"
+                    type="tel"
+                    placeholder="Ex: (XX) XXXX-XXXX"
+                    value={operatorPhone}
+                    onChange={(e) => setOperatorPhone(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
               </div>
-              <div className="grid gap-2">
+
+              {/* Seleção do Tenant */}
+              <div className="grid gap-2 mt-4">
                 <Label htmlFor="tenantSelect">Associar ao Tenant</Label>
                 {isLoadingData ? ( // Usa isLoadingData para o Select também
                   <p className="text-muted-foreground">Carregando Tenants...</p>
@@ -251,7 +401,8 @@ export default function EditOperatorPage() {
                   </Select>
                 )}
               </div>
-              <Button type="submit" className="w-full mt-4" disabled={isSubmitting || isLoadingData}>
+
+              <Button type="submit" className="w-full mt-6" disabled={isSubmitting || isLoadingData}>
                 {isSubmitting ? 'Atualizando Operadora...' : 'Atualizar Operadora'}
               </Button>
             </form>

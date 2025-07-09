@@ -9,52 +9,36 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ChevronLeft } from "lucide-react"; // Ícone de voltar
-
-interface Tenant {
-  id: string;
-  name: string;
-}
 
 export default function AddOperatorPage() {
   // Estados da Operadora
   const [operatorName, setOperatorName] = useState('');
   const [operatorCnpj, setOperatorCnpj] = useState('');
-  const [operatorLogo, setOperatorLogo] = useState(''); // Novo estado
-  const [operatorColor, setOperatorColor] = useState(''); // Novo estado
-  const [operatorAddress, setOperatorAddress] = useState(''); // Novo estado
-  const [operatorAddressComplement, setOperatorAddressComplement] = useState(''); // Novo estado
-  const [operatorNeighborhood, setOperatorNeighborhood] = useState(''); // Novo estado
-  const [operatorCity, setOperatorCity] = useState(''); // Novo estado
-  const [operatorState, setOperatorState] = useState(''); // Novo estado
-  const [operatorZipCode, setOperatorZipCode] = useState(''); // Novo estado
-  const [operatorPhone, setOperatorPhone] = useState(''); // Novo estado
+  const [operatorLogo, setOperatorLogo] = useState('');
+  const [operatorColor, setOperatorColor] = useState('');
+  const [operatorAddress, setOperatorAddress] = useState('');
+  const [operatorAddressComplement, setOperatorAddressComplement] = useState('');
+  const [operatorNeighborhood, setOperatorNeighborhood] = useState('');
+  const [operatorCity, setOperatorCity] = useState('');
+  const [operatorState, setOperatorState] = useState('');
+  const [operatorZipCode, setOperatorZipCode] = useState('');
+  const [operatorPhone, setOperatorPhone] = useState('');
 
   // Estados do Admin do Tenant
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
 
-  const [selectedTenantId, setSelectedTenantId] = useState('');
-  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingTenants, setIsLoadingTenants] = useState(true);
 
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
@@ -65,31 +49,6 @@ export default function AddOperatorPage() {
     }
   }, [user, isAuthLoading, router]);
 
-  // Carregar lista de Tenants
-  useEffect(() => {
-    const fetchTenants = async () => {
-      if (!isAuthLoading && user && user.role === 'ROOT') {
-        setIsLoadingTenants(true);
-        try {
-          const response = await axios.get('/api/admin/tenants', {
-            headers: {
-              // 'Authorization': `Bearer ${user.token}`
-            }
-          });
-          setTenants(response.data);
-        } catch (err) {
-          console.error('Erro ao buscar tenants:', err);
-          // Removida a mensagem específica "Nenhum Tenant disponível. Crie um Tenant primeiro."
-          // A mensagem de erro agora é mais genérica ou tratada pelo Select
-          setFormError('Falha ao carregar a lista de tenants.');
-        } finally {
-          setIsLoadingTenants(false);
-        }
-      }
-    };
-    fetchTenants();
-  }, [user, isAuthLoading]);
-
   const handleCreateOperator = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -98,7 +57,7 @@ export default function AddOperatorPage() {
 
     // Validação de todos os campos obrigatórios
     if (
-      !operatorName || !operatorCnpj || !operatorLogo || !operatorColor || !selectedTenantId ||
+      !operatorName || !operatorCnpj || !operatorLogo || !operatorColor ||
       !adminName || !adminEmail || !adminPassword
     ) {
       setFormError('Por favor, preencha todos os campos obrigatórios.');
@@ -107,12 +66,12 @@ export default function AddOperatorPage() {
     }
 
     try {
+      // O endpoint da API será responsável por criar o Tenant (com slug), a Operadora e o Administrador
       const response = await axios.post('/api/admin/operators/add', {
         name: operatorName,
         cnpj: operatorCnpj,
         logo: operatorLogo,
         color: operatorColor,
-        tenantId: selectedTenantId,
         address: operatorAddress,
         addressComplement: operatorAddressComplement,
         neighborhood: operatorNeighborhood,
@@ -146,7 +105,6 @@ export default function AddOperatorPage() {
       setAdminName('');
       setAdminEmail('');
       setAdminPassword('');
-      setSelectedTenantId('');
 
     } catch (err: any) {
       console.error('Erro ao criar operadora:', err);
@@ -197,7 +155,7 @@ export default function AddOperatorPage() {
             <CardDescription>Preencha os dados para adicionar uma nova operadora de saúde.</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <form onSubmit={handleCreateOperator} className="flex flex-col gap-6"> {/* Aumentado o gap para melhor espaçamento */}
+            <form onSubmit={handleCreateOperator} className="flex flex-col gap-6">
               {formError && (
                 <p className="text-destructive text-sm text-center bg-destructive/10 p-2 rounded-md">
                   {formError}
@@ -344,9 +302,9 @@ export default function AddOperatorPage() {
                 </div>
               </div>
 
-              {/* Seção de Dados do Administrador do Tenant */}
-              <h3 className="text-lg font-semibold mt-4">Dados do Administrador do Tenant</h3>
-              <p className="text-sm text-muted-foreground">Este usuário será o administrador da conta do Tenant associado a esta operadora.</p>
+              {/* Seção de Dados do Administrador da Operadora */}
+              <h3 className="text-lg font-semibold mt-4">Dados do Administrador da Operadora</h3>
+              <p className="text-sm text-muted-foreground">Este usuário será o administrador da conta para esta nova operadora.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="adminName">Nome do Administrador</Label>
@@ -365,7 +323,7 @@ export default function AddOperatorPage() {
                   <Input
                     id="adminEmail"
                     type="email"
-                    placeholder="admin@tenant.com"
+                    placeholder="admin@operadora.com"
                     required
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
@@ -386,31 +344,7 @@ export default function AddOperatorPage() {
                 </div>
               </div>
 
-              {/* Seleção do Tenant */}
-              <div className="grid gap-2 mt-4">
-                <Label htmlFor="tenantSelect">Associar ao Tenant</Label>
-                {isLoadingTenants ? (
-                  <p className="text-muted-foreground">Carregando Tenants...</p>
-                ) : tenants.length === 0 ? (
-                  // Mensagem mais genérica ou ausente, dependendo da UX desejada
-                  <p className="text-destructive">Nenhum Tenant disponível. Por favor, crie um Tenant primeiro.</p>
-                ) : (
-                  <Select value={selectedTenantId} onValueChange={setSelectedTenantId} disabled={isSubmitting}>
-                    <SelectTrigger id="tenantSelect">
-                      <SelectValue placeholder="Selecione um Tenant" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tenants.map((tenant) => (
-                        <SelectItem key={tenant.id} value={tenant.id}>
-                          {tenant.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-
-              <Button type="submit" className="w-full mt-6" disabled={isSubmitting || isLoadingTenants || tenants.length === 0}>
+              <Button type="submit" className="w-full mt-6" disabled={isSubmitting}>
                 {isSubmitting ? 'Criando Operadora e Admin...' : 'Criar Operadora e Administrador'}
               </Button>
             </form>

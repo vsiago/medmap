@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext'; // Importe seu hook de autenticação
 import { useRouter } from 'next/navigation'; // Para redirecionamento
 import Link from 'next/link';
+import axios from 'axios'; // Usaremos axios para a requisição POST
 
 // Importações dos seus componentes Shadcn/UI
 import { Button } from "@/components/ui/button";
@@ -20,8 +21,9 @@ import { Label } from "@/components/ui/label";
 
 // Defina a super senha em uma variável de ambiente.
 // Em produção, use um método mais seguro para gerenciar segredos.
-// Ex: NEXT_PUBLIC_SUPER_ADMIN_PAGE_PASSWORD="sua_super_senha_aqui" no .env.local
-const SUPER_ADMIN_PAGE_PASSWORD = process.env.NEXT_PUBLIC_SUPER_ADMIN_PAGE_PASSWORD || 'default_super_password';
+// Ex: NEXT_PUBLIC_ROOT_ACCESS_PASSWORD="sua_super_senha_aqui" no .env.local
+// Esta senha será validada tanto no cliente quanto no servidor.
+const ROOT_ACCESS_PASSWORD = process.env.NEXT_PUBLIC_ROOT_ACCESS_PASSWORD || 'default_root_password_change_me';
 
 export default function RegisterRootPage() {
   const [name, setName] = useState('');
@@ -31,79 +33,63 @@ export default function RegisterRootPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Novos estados para a super senha
-  const [superPassword, setSuperPassword] = useState('');
-  const [isSuperPasswordValidated, setIsSuperPasswordValidated] = useState(false);
-  const [superPasswordError, setSuperPasswordError] = useState('');
+  // Novos estados para a super senha de acesso à página
+  const [accessPassword, setAccessPassword] = useState('');
+  const [isAccessPasswordValidated, setIsAccessPasswordValidated] = useState(false);
+  const [accessPasswordError, setAccessPasswordError] = useState('');
 
   const { user, isLoading: isAuthLoading } = useAuth(); // Obtém o usuário logado e o estado de carregamento
   const router = useRouter();
 
-  // Efeito para verificar a super senha e as permissões do usuário
+  // Efeito para verificar se a super senha já foi validada na sessão atual
   useEffect(() => {
-    // Verifica se a super senha já foi validada na sessão atual
-    const validatedInSession = sessionStorage.getItem('superAdminPageValidated') === 'true';
+    const validatedInSession = sessionStorage.getItem('rootAccessValidated') === 'true';
     if (validatedInSession) {
-      setIsSuperPasswordValidated(true);
+      setIsAccessPasswordValidated(true);
     }
+  }, []);
 
-    // A validação de role ROOT não redireciona mais imediatamente.
-    // A super senha é a primeira barreira.
-    // Se a super senha foi validada, mas o usuário logado não é ROOT,
-    // ainda podemos exibir uma mensagem de erro ou redirecionar.
-    // No entanto, para o fluxo de "dialog pedindo a senha mestre",
-    // a página sempre apresentará o dialog primeiro.
-    // A validação de role do usuário logado será mais relevante na API de registro ROOT.
-  }, []); // Removido user, isAuthLoading, router das dependências para evitar loop e para o novo fluxo
-
-  // Função para lidar com a submissão da super senha
-  const handleSuperPasswordSubmit = (e: React.FormEvent) => {
+  // Função para lidar com a submissão da super senha de acesso à página
+  const handleAccessPasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSuperPasswordError('');
-    if (superPassword === SUPER_ADMIN_PAGE_PASSWORD) {
-      setIsSuperPasswordValidated(true);
-      sessionStorage.setItem('superAdminPageValidated', 'true'); // Persiste na sessão
+    setAccessPasswordError('');
+    if (accessPassword === ROOT_ACCESS_PASSWORD) {
+      setIsAccessPasswordValidated(true);
+      sessionStorage.setItem('rootAccessValidated', 'true'); // Persiste na sessão
     } else {
-      setSuperPasswordError('Super senha incorreta.');
+      setAccessPasswordError('Senha de acesso incorreta.');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(''); 
+    setError('');
     setSuccessMessage('');
-    setIsSubmitting(true); 
+    setIsSubmitting(true);
 
     try {
-      // 1. Faz a requisição POST para a nova API de registro ROOT
-      const response = await fetch('/api/admin/register-root', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // ATENÇÃO: Se você implementou uma chave secreta na API, adicione-a aqui
-          // 'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ROOT_API_SECRET_KEY}`
-          // OU, se a API exige que um ROOT esteja logado, o token JWT do usuário logado
-          // 'Authorization': `Bearer ${user?.token}` // Se o token estiver no contexto
-        },
-        body: JSON.stringify({ name, email, password }),
+      // 1. Faz a requisição POST para a API de registro ROOT
+      const response = await axios.post('/api/admin/register-root', {
+        name,
+        email,
+        password,
+        accessPassword: accessPassword, // Envia a senha de acesso para validação no servidor
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Falha no registro de usuário ROOT.');
-      }
-
-      const responseData = await response.json();
-      setSuccessMessage(responseData.message || 'Usuário ROOT criado com sucesso!');
+      setSuccessMessage(response.data.message || 'Usuário ROOT criado com sucesso!');
       setName('');
       setEmail('');
       setPassword('');
 
     } catch (err: any) {
       console.error('Erro no registro ROOT:', err);
-      setError(err.message || 'Ocorreu um erro inesperado ao registrar o usuário ROOT.');
+      if (axios.isAxiosError(err) && err.response) {
+        setError(err.response.data.message || 'Ocorreu um erro inesperado ao registrar o usuário ROOT.');
+      } else {
+        setError(err.message || 'Ocorreu um erro inesperado ao registrar o usuário ROOT.');
+      }
     } finally {
-      setIsSubmitting(false); 
+      setIsSubmitting(false);
     }
   };
 
@@ -128,33 +114,33 @@ export default function RegisterRootPage() {
   }
 
   // Se a super senha ainda não foi validada, mostra o formulário de super senha
-  if (!isSuperPasswordValidated) {
+  if (!isAccessPasswordValidated) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-accent">
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle className="text-center">Acesso Restrito</CardTitle>
             <CardDescription className="text-center">
-              Digite a super senha para acessar o registro de usuários ROOT.
+              Digite a senha de acesso para registrar usuários ROOT.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSuperPasswordSubmit}>
+            <form onSubmit={handleAccessPasswordSubmit}>
               <div className="flex flex-col gap-4">
-                {superPasswordError && (
+                {accessPasswordError && (
                   <p className="text-destructive text-sm text-center bg-destructive/10 p-2 rounded-md">
-                    {superPasswordError}
+                    {accessPasswordError}
                   </p>
                 )}
                 <div className="grid gap-2">
-                  <Label htmlFor="superPassword">Super Senha</Label>
+                  <Label htmlFor="accessPassword">Senha de Acesso</Label>
                   <Input
-                    id="superPassword"
+                    id="accessPassword"
                     type="password"
                     placeholder="********"
                     required
-                    value={superPassword}
-                    onChange={(e) => setSuperPassword(e.target.value)}
+                    value={accessPassword}
+                    onChange={(e) => setAccessPassword(e.target.value)}
                   />
                 </div>
                 <Button type="submit" className="w-full mt-2">
@@ -169,7 +155,6 @@ export default function RegisterRootPage() {
   }
 
   // Se a super senha foi validada, mostra o formulário de registro ROOT
-  // (A validação de role ROOT agora é responsabilidade da API ou de um middleware mais global)
   return (
     <main className="min-h-screen flex items-center justify-center bg-accent">
       <Card className="w-full max-w-sm">
@@ -238,6 +223,7 @@ export default function RegisterRootPage() {
         </CardContent>
         <CardFooter className="flex-col gap-2">
           <p className="text-center text-sm text-muted-foreground mt-4">
+            {/* O link foi atualizado para refletir o novo caminho da página ROOT */}
             <Link href="/admin" className="underline underline-offset-4 hover:text-primary">
               Voltar para o Painel Admin
             </Link>
