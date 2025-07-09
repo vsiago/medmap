@@ -18,7 +18,7 @@ function generateSlug(name: string): string {
 // Rota GET para buscar um Tenant específico por ID
 export async function GET(
   request: NextRequest, // Use NextRequest para o primeiro argumento
-  { params }: { params: { id: string } } // Tipagem correta para o segundo argumento
+  { params }: { params: Record<string, string> } // Tipagem correta para o segundo argumento
 ) {
   try {
     // ATENÇÃO: Autenticação e Autorização
