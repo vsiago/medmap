@@ -45,7 +45,7 @@ export function AdminNavbar() {
       {/* Links de Navegação */}
       <div className="flex items-center space-x-4">
         <NavLink href="/admin" icon={Home} label="Dashboard" pathname={pathname} />
-        <NavLink href="/admin/operators" icon={Building} label="Operadoras" pathname={pathname} />
+        <NavLink href="/admin/tenants" icon={Building} label="Operadoras" pathname={pathname} />
         <NavLink href="/admin/register-root" icon={Key} label="Cadastrar ROOT" pathname={pathname} />
       </div>
 
