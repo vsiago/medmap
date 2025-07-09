@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id          String       @id @default(uuid())
+  name        String
+  logoUrl     String?
+  color       String?
+  users       User[]
+  operators   Operator[]
+  comparisons Comparison[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      UserRole @default(ANALYST)
+  tenantId  String? // MUDANÇA AQUI: Tornar tenantId opcional
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id]) // MUDANÇA AQUI: Relação também opcional
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model Operator {
+  id                String    @id @default(uuid())
+  name              String
+  logo              String // NOVO CAMPO: Logo da operadora
+  color             String // NOVO CAMPO: Cor da operadora
+  cnpj              String    @unique // CNPJ deve ser único
+  tenantId          String
+  tenant            Tenant    @relation(fields: [tenantId], references: [id])
+  address           String? // NOVO CAMPO: Endereço completo
+  addressComplement String? // NOVO CAMPO: Complemento do endereço
+  neighborhood      String? // NOVO CAMPO: Bairro
+  city              String? // NOVO CAMPO: Cidade
+  state             String? // NOVO CAMPO: Estado
+  zipCode           String? // NOVO CAMPO: CEP
+  phone             String? // NOVO CAMPO: Telefone
+  networks          Network[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([tenantId, cnpj])
+  @@index([tenantId])
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  ANALYST
+  VIEWER
+  ROOT
+}
+
+model Network {
+  id               String       @id @default(uuid())
+  operatorId       String
+  operator         Operator     @relation(fields: [operatorId], references: [id])
+  name             String
+  description      String?
+  version          String?
+  units            Unit[]
+  redeAComparisons Comparison[] @relation("RedeA")
+  redeBComparisons Comparison[] @relation("RedeB")
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([operatorId])
+}
+
+model Unit {
+  id                String     @id @default(uuid())
+  networkId         String
+  network           Network    @relation(fields: [networkId], references: [id])
+  name              String
+  externalId        String?
+  type              UnitType
+  specialtyTags     String[]
+  city              String
+  state             String
+  latitude          Float?
+  longitude         Float?
+  address           String?
+  addressComplement String?
+  neighborhood      String?
+  zipCode           String?
+  phone             String?
+  website           String?
+  openingHours      String?
+  certifications    String[]
+  beds              Int?
+  equipments        String[]
+  status            UnitStatus @default(CREDENCIADO)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([networkId])
+  @@index([city])
+  @@index([state])
+  @@index([state, city])
+  @@index([type])
+  @@index([latitude, longitude])
+}
+
+enum UnitType {
+  HOSPITAL
+  AMBULATORIO
+  IMAGEM
+  LABORATORIO
+  OUTROS
+}
+
+enum UnitStatus {
+  CREDENCIADO
+  DESCREDENCIADO
+  POTENCIAL
+}
+
+model Comparison {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  name       String
+  redeAId    String
+  redeA      Network  @relation("RedeA", fields: [redeAId], references: [id])
+  redeBId    String
+  redeB      Network  @relation("RedeB", fields: [redeBId], references: [id])
+  analysis   Json
+  comparedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([redeAId])
+  @@index([redeBId])
+}
