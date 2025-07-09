@@ -24,11 +24,10 @@ export default function TenantOperatorLayout({
 
     // Define o caminho completo esperado para a página de login do tenant
     const tenantLoginPath = `/${tenantOperator}/login`;
-    const tenantDashboardPath = `/${tenantOperator}/dashboard`;
 
-    // Case 1: Usuário não está logado
+    // Se o usuário não está logado
     if (!user) {
-      // Se a URL atual NÃO é a página de login do tenant, então redireciona
+      // E a URL atual NÃO é a página de login do tenant, então redireciona
       if (pathname !== tenantLoginPath) {
         console.log(`Layout: Usuário não logado, redirecionando para ${tenantLoginPath}`);
         router.replace(tenantLoginPath);
@@ -38,27 +37,15 @@ export default function TenantOperatorLayout({
       return; // Importante retornar para evitar execução desnecessária
     }
 
-    // Case 2: Usuário está logado
+    // Se o usuário está logado, verifica as permissões
     const isRoot = user.role === 'ROOT';
+
     // A validação para usuários de tenant agora usa tenantConfig.id
+    // Certifique-se de que tenantConfig está carregado antes de usar tenantConfig.id
     const isUserOfCorrectTenant = tenantConfig && user.tenantId === tenantConfig.id;
 
-    // Se o usuário é ROOT
-    if (isRoot) {
-      // Se o usuário ROOT está na página de login do tenant, redireciona para o painel de admin global
-      if (pathname === tenantLoginPath) {
-        console.log('Layout: Usuário ROOT logado na página de login do tenant. Redirecionando para /admin');
-        router.replace('/admin');
-      }
-      // Se o usuário ROOT está em qualquer outra página de tenant (ex: /oplan-saude),
-      // ele é permitido. Não há redirecionamento explícito aqui para /admin.
-      console.log('Layout: Usuário ROOT logado. Permitindo acesso à rota do tenant.');
-      return; // ROOT é permitido, não há mais verificações de permissão para este layout.
-    }
-
-    // Case 3: Usuário está logado, mas NÃO é ROOT (deve ser um usuário de tenant)
-    if (!isUserOfCorrectTenant) {
-      // Se o usuário de tenant está logado mas não pertence ao tenant da URL, redireciona para o login do tenant
+    // Se o usuário está logado, mas não é ROOT e não pertence a este tenant
+    if (!isRoot && !isUserOfCorrectTenant) {
       console.log(`Layout: Usuário logado (${user.email}, Role: ${user.role}, TenantId: ${user.tenantId}) não tem permissão para o tenant do slug ${tenantOperator}. Redirecionando para login do tenant.`);
       router.replace(tenantLoginPath + '?error=unauthorized');
       // Opcional: fazer logout se o token for de um usuário de outro tenant
@@ -66,9 +53,18 @@ export default function TenantOperatorLayout({
       return;
     }
 
-    // Case 4: Usuário de tenant está logado e pertence ao tenant correto
-    // Se ele está na página de login do tenant, redireciona para o dashboard do tenant
-    if (pathname === tenantLoginPath) {
+    // Se o usuário é ROOT e está tentando acessar um dashboard de tenant, redireciona para o admin
+    // Isso evita que ROOTs fiquem presos em dashboards de tenant se o tenantId do user for nulo
+    if (isRoot && !pathname.startsWith('/admin')) { // Ajustado para verificar se já não está em /admin
+      console.log('Layout: Usuário ROOT logado. Redirecionando para /admin');
+      router.replace('/admin');
+      return;
+    }
+
+    // Se o usuário é ADMIN/MANAGER/ANALYST/VIEWER do tenant correto e está na página de login, redireciona para o dashboard
+    // Esta condição só deve ser avaliada se o tenantConfig já estiver carregado e o user.tenantId corresponder
+    const tenantDashboardPath = `/${tenantOperator}/dashboard`;
+    if (isUserOfCorrectTenant && pathname === tenantLoginPath) {
         console.log(`Layout: Usuário do tenant ${tenantOperator} logado. Redirecionando para ${tenantDashboardPath}`);
         router.replace(tenantDashboardPath);
         return;

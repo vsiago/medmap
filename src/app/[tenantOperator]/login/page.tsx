@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import axios from 'axios'; // Importe o Axios para fazer a requisição HTTP
 import {
   Card,
   CardContent,
@@ -17,28 +18,43 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function TenantOperatorLoginPage() {
-  const { tenantOperator } = useParams(); // Obtém o identificador da operadora/tenant
+  const { tenantOperator } = useParams(); // Obtém o identificador da operadora/tenant (slug)
   const router = useRouter();
-  const { user, isLoading: isAuthLoading, login } = useAuth();
+  const { user, isLoading: isAuthLoading, login } = useAuth(); // Importa a função login do contexto
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // NOVO LOG: Verifica o estado de carregamento e usuário no componente de página
+  console.log('TenantOperatorLoginPage Render - isAuthLoading:', isAuthLoading, 'User:', user, 'TenantOperator:', tenantOperator);
+
   useEffect(() => {
     // Se já está autenticado e tem a role correta, redireciona para o dashboard do tenant
     if (!isAuthLoading && user) {
+      console.log('TenantOperatorLoginPage useEffect: Usuário autenticado, verificando redirecionamento.');
       const isRoot = user.role === 'ROOT';
+      // Verifica se o usuário é ADMIN e se o tenantId do usuário corresponde ao slug da URL
       const isAdminOfThisTenant = user.role === 'ADMIN' && user.tenantId === tenantOperator;
+      // Para outros roles (MANAGER, ANALYST, VIEWER), também verifica se o tenantId corresponde
+      const isUserOfThisTenant = ['MANAGER', 'ANALYST', 'VIEWER'].includes(user.role) && user.tenantId === tenantOperator;
 
-      if (isRoot || isAdminOfThisTenant) {
-        router.replace(`/${tenantOperator}`);
+      if (isRoot) {
+        console.log('TenantOperatorLoginPage useEffect: Redirecionando ROOT para /admin');
+        router.replace('/admin'); // Redireciona ROOT para o painel de admin
+      } else if (isAdminOfThisTenant || isUserOfThisTenant) {
+        console.log(`TenantOperatorLoginPage useEffect: Redirecionando usuário do tenant ${tenantOperator} para /${tenantOperator}/dashboard`);
+        router.replace(`/${tenantOperator}/dashboard`); // Redireciona para o dashboard do tenant
       } else {
-        // Se logado mas sem permissão para este tenant, pode redirecionar para outro lugar
-        // ou mostrar uma mensagem de acesso negado. Por enquanto, redireciona para o login global.
+        // Se logado mas sem permissão para este tenant, ou tenantId não corresponde,
+        // pode redirecionar para o login global ou uma página de acesso negado.
+        // Por segurança, redirecionar para o login global é uma boa prática.
+        console.log('TenantOperatorLoginPage useEffect: Usuário logado mas sem permissão para este tenant. Redirecionando para /login.');
         router.replace('/login');
       }
+    } else if (!isAuthLoading && !user) {
+      console.log('TenantOperatorLoginPage useEffect: AuthContext terminou de carregar, e nenhum usuário logado. Exibindo formulário de login.');
     }
   }, [user, isAuthLoading, tenantOperator, router]);
 
@@ -54,19 +70,42 @@ export default function TenantOperatorLoginPage() {
     }
 
     try {
-      // A função de login do AuthContext precisará ser capaz de lidar com o tenantId
-      // ou o backend precisará validar se o usuário pertence ao tenant do URL.
-      await login(email, password, tenantOperator as string); // Passa o tenantOperator para o login
-      // O redirecionamento após o login bem-sucedido é tratado pelo useEffect acima
+      // 1. Faz a requisição POST para sua API de login
+      // A API de login (src/app/api/auth/login/route.ts) deve validar o tenantId
+      const response = await axios.post('/api/auth/login', {
+        email,
+        password,
+        tenantSlug: tenantOperator, // Envia o slug do tenant para a API
+      });
+
+      // 2. Verifica se a resposta da API foi bem-sucedida
+      if (response.status !== 200) {
+        throw new Error(response.data.message || 'Falha no login. Credenciais inválidas.');
+      }
+
+      // 3. Se o login for bem-sucedido, obtém os dados do usuário e do tenant da resposta da API
+      const userData = response.data; // A API deve retornar UserSession e TenantConfig
+      
+      // 4. Chama a função 'login' do AuthContext com os dados recebidos
+      // O AuthContext vai persistir a sessão e o useEffect acima cuidará do redirecionamento
+      login(userData, userData.tenantConfig); 
+
     } catch (err: any) {
       console.error('Erro no login:', err);
-      setLoginError(err.message || 'Credenciais inválidas ou erro ao fazer login.');
+      // O Axios encapsula erros de resposta HTTP em err.response
+      if (axios.isAxiosError(err) && err.response) {
+        setLoginError(err.response.data.message || 'Credenciais inválidas ou erro ao fazer login.');
+      } else {
+        setLoginError(err.message || 'Ocorreu um erro inesperado ao fazer login.');
+      }
     } finally {
       setIsLoggingIn(false);
     }
   };
 
+  // Exibe um estado de carregamento enquanto o AuthContext verifica a sessão
   if (isAuthLoading) {
+    console.log('TenantOperatorLoginPage: Renderizando tela de Carregando...');
     return (
       <main className="min-h-screen flex items-center justify-center bg-accent">
         <Card className="w-full max-w-sm">
@@ -84,6 +123,9 @@ export default function TenantOperatorLoginPage() {
       </main>
     );
   }
+
+  // NOVO LOG: Este log só será executado se isAuthLoading for false
+  console.log('TenantOperatorLoginPage: isAuthLoading é false. Renderizando formulário de login.');
 
   // Se já está logado e tem permissão, o useEffect já redirecionou.
   // Se não está logado ou não tem permissão para este tenant, mostra o formulário de login.

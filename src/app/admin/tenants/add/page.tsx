@@ -248,7 +248,7 @@ export default function AddTenantPage() {
               <ChevronLeft className="h-6 w-6" />
             </Link>
           </Button>
-          <h1 className="text-3xl font-bold text-primary-foreground">Adicionar Novo Tenant (Operadora)</h1>
+          <h1 className="text-3xl font-bold text-primary">Adicionar Novo Tenant (Operadora)</h1>
         </div>
 
         <Card className="p-6">

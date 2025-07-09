@@ -69,7 +69,7 @@ export default function RegisterRootPage() {
 
     try {
       // 1. Faz a requisição POST para a API de registro ROOT
-      const response = await axios.post('/api/admin/register-root', {
+      const response = await axios.post('/api/register-root', {
         name,
         email,
         password,
@@ -80,6 +80,8 @@ export default function RegisterRootPage() {
       setName('');
       setEmail('');
       setPassword('');
+
+      router.push('/login');
 
     } catch (err: any) {
       console.error('Erro no registro ROOT:', err);

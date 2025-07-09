@@ -126,7 +126,7 @@ export default function AdminTenantsDashboardPage() { // Renomeado para AdminTen
   return (
     <main className="min-h-screen bg-accent p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        <h1 className="text-4xl font-bold text-center text-primary-foreground mb-8">Gestão de Tenants (Operadoras)</h1>
+        <h1 className="text-4xl font-bold text-center text-primary mb-8">Gestão de Tenants (Operadoras)</h1>
 
        {/* Destaques/Métricas Principais */}
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

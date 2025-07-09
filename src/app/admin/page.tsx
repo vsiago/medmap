@@ -142,7 +142,7 @@ export default function AdminDashboardPage() {
   return (
     <main className="min-h-screen bg-accent p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        <h1 className="text-4xl font-bold text-center text-primary-foreground mb-8">Painel de Super-Administrador</h1>
+        <h1 className="text-4xl font-bold text-center text-primary-white mb-8">Painel de Super-Administrador</h1>
 
         {/* Destaques/Métricas Principais */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

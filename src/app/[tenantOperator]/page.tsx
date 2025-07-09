@@ -15,7 +15,7 @@ export default function TenantOperatorDashboardPage() {
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <h1 className="text-4xl font-bold text-center text-primary mb-8">
-          Bem-vindo ao Painel da Operadora <span className="text-primary-foreground">{tenantOperator}</span>
+          Bem-vindo ao Painel da Operadora <span className="text-primary">{tenantOperator}</span>
         </h1>
 
         <p className="text-center text-muted-foreground text-lg mb-12">
